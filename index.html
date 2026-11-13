@@ -6,14 +6,14 @@
 <meta name="theme-color" content="#14171a">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%231CCFC1'/%3E%3C/svg%3E">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Check Time">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%231CCFC1'/%3E%3C/svg%3E">
 <title>RUCHI: Check Time</title>
 <style>
   :root {
     --bg:#14171a; --card:#1d2125; --line:#2c3238; --text:#e8ecef; --dim:#8b949c; --acc:#1CCFC1;
-    --band:rgba(28,207,193,.12);
+    --band:rgba(28,207,193,.12); --g:#3fb950; --y:#d6b33c; --o:#e8833a;
   }
   * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
   html, body { margin:0; background:var(--bg); color:var(--text); }
@@ -22,9 +22,12 @@
     padding:max(14px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
     -webkit-user-select:none; user-select:none;
   }
+  body.sheet-open { overflow:hidden; }
   main { max-width:520px; margin:0 auto; }
-  .brand { font-size:13px; letter-spacing:.1em; color:var(--dim); margin:2px 0 12px; }
+  .top { display:flex; justify-content:space-between; align-items:center; margin:0 0 12px; }
+  .brand { font-size:13px; letter-spacing:.1em; color:var(--dim); }
   .brand b { color:var(--acc); font-weight:600; }
+  #openSounds { background:#262b30; color:var(--dim); border-radius:10px; padding:6px 12px; font-size:14px; }
   .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:14px 12px; margin-bottom:12px; }
   .label { color:var(--dim); font-size:14px; text-align:center; margin-bottom:4px; }
   .row { display:flex; gap:10px; justify-content:space-around; align-items:flex-start; }
@@ -60,7 +63,7 @@
   .totals { display:flex; justify-content:space-around; text-align:center; }
   .big { font-size:40px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
   .big small { font-size:17px; font-weight:400; color:var(--dim); margin:0 3px 0 1px; }
-  .note { color:var(--dim); font-size:13px; text-align:center; margin-top:6px; }
+  .note { color:var(--dim); font-size:13px; text-align:center; }
 
   /* кнопки */
   button { font:inherit; border:0; cursor:pointer; color:var(--text); }
@@ -80,14 +83,46 @@
   .left { color:var(--dim); font-size:15px; margin-top:6px; }
   #done { text-align:center; color:var(--acc); font-size:17px; min-height:12px; margin:6px 0; }
 
-  /* мелочи внизу */
-  .opts { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; }
-  .chip { background:#262b30; border-radius:10px; padding:8px 12px; font-size:14px; }
-  .toggle { display:flex; align-items:center; gap:8px; color:var(--dim); font-size:14px; }
-  .toggle input { width:20px; height:20px; accent-color:var(--acc); }
+  /* панель «Звуки» */
+  #sheet {
+    position:fixed; inset:0; background:var(--bg); overflow-y:auto; -webkit-overflow-scrolling:touch; z-index:10;
+    padding:max(14px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+  }
+  #sheet[hidden] { display:none; }
+  .sheetHead { display:flex; justify-content:space-between; align-items:center; max-width:520px; margin:0 auto 6px; }
+  .sheetHead b { font-size:20px; }
+  #sheetDone { background:var(--acc); color:#06201e; font-weight:600; border-radius:12px; padding:8px 16px; }
+  .sheetIn { max-width:520px; margin:0 auto; }
+  .legend { color:var(--dim); font-size:12px; display:flex; gap:12px; justify-content:center; margin:4px 0 12px; }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; vertical-align:1px; }
+  .dot.g { background:var(--g); } .dot.y { background:var(--y); } .dot.o { background:var(--o); }
+  .role { padding:10px 12px; }
+  .rhead { display:flex; align-items:center; gap:10px; }
+  .rname { flex:1; cursor:pointer; }
+  .rname .t { font-size:17px; }
+  .rsum { color:var(--dim); font-size:13px; }
+  .play { width:44px; height:44px; border-radius:50%; background:#262b30; font-size:16px; color:var(--acc); }
+  .sw { position:relative; width:46px; height:28px; flex:0 0 auto; }
+  .sw input { opacity:0; width:0; height:0; position:absolute; }
+  .sw span { position:absolute; inset:0; background:#3a4148; border-radius:14px; transition:.15s; }
+  .sw span::after { content:''; position:absolute; width:22px; height:22px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.15s; }
+  .sw input:checked + span { background:var(--acc); }
+  .sw input:checked + span::after { left:21px; }
+  .role.off .rname, .role.off .play { opacity:.4; }
+  .rbody { display:none; margin-top:10px; border-top:1px solid var(--line); padding-top:10px; }
+  .role.open .rbody { display:block; }
+  .chips { display:flex; flex-wrap:wrap; gap:6px; }
+  .chip { background:#262b30; border-radius:10px; padding:8px 11px; font-size:14px; color:var(--text); }
+  .chip.on { background:var(--acc); color:#06201e; font-weight:600; }
+  .line { display:flex; align-items:center; gap:10px; margin-top:12px; }
+  .line .k { width:84px; color:var(--dim); font-size:14px; }
+  .line .v { width:48px; text-align:right; font-size:14px; font-variant-numeric:tabular-nums; }
+  .line input[type=range] { flex:1; accent-color:var(--acc); height:28px; }
+  .reset { background:#262b30; border-radius:8px; width:34px; height:30px; color:var(--dim); font-size:15px; }
   .seg { display:inline-flex; background:#262b30; border-radius:10px; padding:2px; }
-  .seg button { background:transparent; padding:6px 12px; border-radius:8px; font-size:13px; color:var(--dim); }
+  .seg button { background:transparent; padding:6px 14px; border-radius:8px; font-size:14px; color:var(--dim); }
   .seg button.on { background:#3a4148; color:var(--text); }
+  .file { color:var(--dim); font-size:13px; margin-top:8px; word-break:break-all; }
   details { color:var(--dim); font-size:13px; }
   summary { cursor:pointer; text-align:center; padding:4px; }
   #log { font:12px/1.35 ui-monospace, Menlo, Consolas, monospace; white-space:pre-wrap; max-height:240px; overflow:auto; -webkit-user-select:text; user-select:text; }
@@ -95,14 +130,17 @@
 </head>
 <body>
 <main>
-  <div class="brand"><b>RUCHI</b> · CHECK TIME</div>
+  <div class="top">
+    <div class="brand"><b>RUCHI</b> · CHECK TIME</div>
+    <button id="openSounds">♪ Звуки</button>
+  </div>
 
   <div id="setView">
     <div class="card">
       <div class="row">
         <div class="group">
           <div class="label">Промежуток</div>
-          <div class="wheels" id="wPeriod">
+          <div class="wheels">
             <div class="wheel" id="wMin"></div>
             <div class="sep">:</div>
             <div class="wheel" id="wSec"></div>
@@ -149,27 +187,25 @@
       <button id="stop">Стоп</button>
     </div>
   </div>
-
-  <div class="card">
-    <div class="opts">
-      <span class="note" style="margin:0">Послушать:</span>
-      <button class="chip" data-hear="start">старт</button>
-      <button class="chip" data-hear="pip">пип</button>
-      <button class="chip" data-hear="end">бам-бам</button>
-    </div>
-    <div class="opts" style="margin-top:10px">
-      <label class="toggle"><input type="checkbox" id="startSound" checked> звук на старте</label>
-      <span class="seg" id="method"><button data-m="A">способ А</button><button data-m="B">способ Б</button></span>
-    </div>
-    <details style="margin-top:8px">
-      <summary>журнал</summary>
-      <div id="log"></div>
-    </details>
-  </div>
 </main>
 
+<div id="sheet" hidden>
+  <div class="sheetHead"><b>Звуки</b><button id="sheetDone">Готово</button></div>
+  <div class="sheetIn">
+    <div class="legend"><span><span class="dot g"></span>советую</span><span><span class="dot y"></span>можно</span><span><span class="dot o"></span>запасной</span></div>
+    <div class="note" id="runNote" style="margin-bottom:10px" hidden>Новые звуки — со следующего «Старт».</div>
+    <div id="roles"></div>
+    <div class="card">
+      <div class="note" style="margin-bottom:8px">Для проб</div>
+      <div style="text-align:center"><span class="seg" id="method"><button data-m="A">способ А</button><button data-m="B">способ Б</button></span></div>
+      <details style="margin-top:8px"><summary>журнал</summary><div id="log"></div></details>
+    </div>
+  </div>
+  <input type="file" id="fileIn" accept="audio/*" hidden>
+</div>
+
 <script type="module">
-import { RATE, plan, makeSounds, soundToWav, buildSessionWav, silenceWav } from './sound.js';
+import { RATE, PRESETS, ROLES, defaultSounds, roleSound, makeSounds, prepareCustom, plan, soundToWav, buildSessionWav, silenceWav, tailSeconds } from './sound.js';
 
 const $ = (id) => document.getElementById(id);
 const range = (a, b, step = 1) => { const r = []; for (let v = a; v <= b; v += step) r.push(v); return r; };
@@ -184,22 +220,64 @@ const human = (s) => {
   if (r || !p.length) p.push(`${r}<small>с</small>`);
   return p.join(' ');
 };
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 
 // ---------- настройки: запоминаются на этом устройстве ----------
 const KEY = 'checktime.settings.v2';
-const DEF = { period: 30, reps: 10, cycles: 2, delay: 10, startSound: true, method: 'A' };
-let S = { ...DEF };
+const DEF = { period: 30, reps: 10, cycles: 2, delay: 10, method: 'A' };
+let S = { ...DEF, sounds: defaultSounds() };
 try {
   const v2 = JSON.parse(localStorage.getItem(KEY) || 'null');
   const v1 = JSON.parse(localStorage.getItem('checktime.settings.v1') || 'null');
-  if (v2) S = { ...S, ...v2 };
-  else if (v1) for (const k of ['period', 'reps', 'cycles', 'delay']) if (v1[k] !== undefined) S[k] = Number(v1[k]) || DEF[k];
-  if (v1 && !v2 && v1.startSound !== undefined) S.startSound = !!v1.startSound;
+  if (v2) {
+    for (const k of Object.keys(DEF)) if (v2[k] !== undefined) S[k] = v2[k];
+    if (v2.sounds) for (const r of Object.keys(ROLES)) S.sounds[r] = { ...S.sounds[r], ...(v2.sounds[r] || {}) };
+    if (v2.startSound === false) S.sounds.start.on = false;
+  } else if (v1) {
+    for (const k of ['period', 'reps', 'cycles', 'delay']) if (v1[k] !== undefined) S[k] = Number(v1[k]) || DEF[k];
+    if (v1.startSound === false) S.sounds.start.on = false;
+  }
 } catch {}
 let saveT;
 function save() {
   clearTimeout(saveT);
   saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }, 300);
+}
+
+// ---------- свои файлы: хранятся в памяти браузера (IndexedDB) ----------
+const CUSTOM = {};
+const idb = () => new Promise((res, rej) => {
+  const r = indexedDB.open('checktime', 1);
+  r.onupgradeneeded = () => r.result.createObjectStore('sounds');
+  r.onsuccess = () => res(r.result);
+  r.onerror = () => rej(r.error);
+});
+async function idbDo(mode, fn) {
+  const db = await idb();
+  return new Promise((res, rej) => {
+    const tx = db.transaction('sounds', mode);
+    const req = fn(tx.objectStore('sounds'));
+    tx.oncomplete = () => res(req && req.result);
+    tx.onerror = () => rej(tx.error);
+  });
+}
+async function loadCustom() {
+  for (const role of Object.keys(ROLES)) {
+    try {
+      const v = await idbDo('readonly', (st) => st.get(role));
+      if (v && v.data) {
+        const i16 = new Int16Array(v.data);
+        const f = new Float32Array(i16.length);
+        for (let i = 0; i < i16.length; i++) f[i] = i16[i] / 32767;
+        CUSTOM[role] = f;
+      }
+    } catch {}
+  }
+}
+async function saveCustom(role, f, name) {
+  const i16 = new Int16Array(f.length);
+  for (let i = 0; i < f.length; i++) i16[i] = Math.round(Math.max(-1, Math.min(1, f[i])) * 32767);
+  await idbDo('readwrite', (st) => st.put({ name, data: i16.buffer }, role));
 }
 
 // ---------- колесо ----------
@@ -215,12 +293,8 @@ function wheel(el, values, fmt, value, onChange) {
     return d;
   });
   const bot = document.createElement('div'); bot.className = 'pad'; el.appendChild(bot);
-  let cur = Math.max(0, values.indexOf(value));
-  if (values.indexOf(value) < 0) { // ближайшее значение
-    let best = 0;
-    values.forEach((v, i) => { if (Math.abs(v - value) < Math.abs(values[best] - value)) best = i; });
-    cur = best;
-  }
+  let cur = 0;
+  values.forEach((v, i) => { if (Math.abs(v - value) < Math.abs(values[cur] - value)) cur = i; });
   const h = () => items[0].offsetHeight || 1;
   const mark = () => items.forEach((d, i) => d.classList.toggle('on', i === cur));
   function go(i, smooth) { el.scrollTo({ top: i * h(), behavior: smooth ? 'smooth' : 'auto' }); }
@@ -246,7 +320,8 @@ function setPeriod() {
   update();
 }
 
-const opts = () => ({ period: S.period, reps: S.reps, cycles: S.cycles, delay: S.delay, startSound: S.startSound });
+const opts = () => ({ period: S.period, reps: S.reps, cycles: S.cycles, delay: S.delay });
+const onMap = () => Object.fromEntries(Object.keys(ROLES).map((r) => [r, !!S.sounds[r].on]));
 
 function update() {
   const cyc = S.period * S.reps;
@@ -254,12 +329,6 @@ function update() {
   $('tTotal').innerHTML = human(cyc * S.cycles);
   save();
 }
-
-$('startSound').checked = S.startSound;
-$('startSound').addEventListener('change', () => { S.startSound = $('startSound').checked; save(); });
-function showMethod() { document.querySelectorAll('#method button').forEach((b) => b.classList.toggle('on', b.dataset.m === S.method)); }
-document.querySelectorAll('#method button').forEach((b) => b.addEventListener('click', () => { S.method = b.dataset.m; showMethod(); save(); }));
-showMethod();
 update();
 
 // ---------- журнал (на ПК уходит только при пробе в домашней сети) ----------
@@ -268,7 +337,6 @@ const sid = Date.now().toString(36);
 const LOG = [];
 let queue = [], sending = false;
 const clock = () => new Date().toLocaleTimeString('ru-RU', { hour12: false });
-
 function log(msg) {
   const rec = { sid, at: new Date().toISOString(), wall: clock(), mode, pos: run ? +position().toFixed(1) : null, msg };
   LOG.push(rec);
@@ -287,19 +355,149 @@ async function flush() {
   if (queue.length) setTimeout(flush, 3000);
 }
 
-// ---------- послушать ----------
-const SND = makeSounds(RATE);
+// ---------- панель «Звуки» ----------
 const blobUrl = (buf) => URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
-const hearUrl = {};
-for (const k of Object.keys(SND)) hearUrl[k] = blobUrl(soundToWav(SND[k], RATE));
-document.querySelectorAll('[data-hear]').forEach((b) => b.addEventListener('click', () => {
-  new Audio(hearUrl[b.dataset.hear]).play().catch((e) => log('не играет: ' + e.message));
-}));
+let preview = null, previewUrl = null;
+function hear(role) {
+  if (preview) preview.pause();
+  if (previewUrl) URL.revokeObjectURL(previewUrl);
+  previewUrl = blobUrl(soundToWav(roleSound(role, S.sounds[role], CUSTOM, S.sounds, RATE), RATE));
+  preview = new Audio(previewUrl);
+  preview.play().catch((e) => log('не играет: ' + e.message));
+}
+
+const openRoles = new Set();
+function summary(role) {
+  const c = S.sounds[role];
+  if (!c.on) return 'выключен';
+  if (c.preset === 'asEnd') return 'как конец цикла';
+  const name = c.preset === 'custom' ? 'Свой файл' : PRESETS[c.preset].name;
+  return `${name} × ${c.strikes} · ${c.vol}%`;
+}
+function slider(role, key, label, min, max, step, fmt) {
+  const c = S.sounds[role];
+  return `<div class="line"><span class="k">${label}</span>
+    <input type="range" min="${min}" max="${max}" step="${step}" value="${c[key]}" data-k="${key}">
+    <span class="v">${fmt(c[key])}</span>
+    <button class="reset" data-reset="${key}" title="по умолчанию">↺</button></div>`;
+}
+const fmtVol = (v) => `${v}%`;
+const fmtPitch = (v) => (v > 0 ? '+' : '') + v;
+const fmtLen = (v) => '×' + Number(v).toFixed(1);
+
+function renderRole(role) {
+  const r = ROLES[role], c = S.sounds[role];
+  const el = document.querySelector(`.role[data-role="${role}"]`);
+  const dot = (p) => { const i = r.rec.indexOf(p); return i < 0 ? '' : `<span class="dot ${'gyo'[i]}"></span>`; };
+  let chips = '';
+  if (role === 'final') chips += `<button class="chip ${c.preset === 'asEnd' ? 'on' : ''}" data-p="asEnd">как конец цикла</button>`;
+  for (const [k, p] of Object.entries(PRESETS)) chips += `<button class="chip ${c.preset === k ? 'on' : ''}" data-p="${k}">${dot(k)}${p.name}</button>`;
+  chips += `<button class="chip ${c.preset === 'custom' ? 'on' : ''}" data-p="custom">Свой файл…</button>`;
+  let body = `<div class="chips">${chips}</div>`;
+  if (c.preset !== 'asEnd') {
+    body += `<div class="line"><span class="k">Ударов</span><span class="seg">${[1, 2, 3].map((n) => `<button data-strikes="${n}" class="${c.strikes === n ? 'on' : ''}">${n}</button>`).join('')}</span></div>`;
+    body += slider(role, 'vol', 'Громкость', 0, 100, 1, fmtVol);
+    if (c.preset !== 'custom') {
+      body += slider(role, 'pitch', 'Высота', -12, 12, 1, fmtPitch);
+      body += slider(role, 'length', 'Длина', 0.5, 2, 0.1, fmtLen);
+    } else {
+      body += `<div class="file">${CUSTOM[role] ? 'Файл: ' + esc(c.customName || 'свой') + ` (${(CUSTOM[role].length / RATE).toFixed(1)} с)` : 'Файл не выбран'} · <a href="#" data-pick="1" style="color:var(--acc)">выбрать файл</a></div>`;
+    }
+  }
+  el.className = `card role${c.on ? '' : ' off'}${openRoles.has(role) ? ' open' : ''}`;
+  el.innerHTML = `<div class="rhead">
+      <label class="sw"><input type="checkbox" ${c.on ? 'checked' : ''} data-on="1"><span></span></label>
+      <div class="rname" data-toggle="1"><div class="t">${r.name}</div><div class="rsum">${summary(role)}</div></div>
+      <button class="play" data-play="1">▶</button>
+    </div><div class="rbody">${body}</div>`;
+}
+
+let pickRole = null;
+function buildRoles() {
+  $('roles').innerHTML = Object.keys(ROLES).map((r) => `<div class="card role" data-role="${r}"></div>`).join('');
+  for (const role of Object.keys(ROLES)) {
+    renderRole(role);
+    const el = document.querySelector(`.role[data-role="${role}"]`);
+    el.addEventListener('click', (e) => {
+      const t = e.target, c = S.sounds[role];
+      if (t.closest('[data-toggle]')) { openRoles.has(role) ? openRoles.delete(role) : openRoles.add(role); renderRole(role); return; }
+      if (t.closest('[data-play]')) { hear(role); return; }
+      const chip = t.closest('[data-p]');
+      if (chip) {
+        if (chip.dataset.p === 'custom' && !CUSTOM[role]) { pickRole = role; $('fileIn').click(); return; }
+        c.preset = chip.dataset.p; save(); renderRole(role); hear(role); return;
+      }
+      if (t.closest('[data-pick]')) { e.preventDefault(); pickRole = role; $('fileIn').click(); return; }
+      const st = t.closest('[data-strikes]');
+      if (st) { c.strikes = Number(st.dataset.strikes); save(); renderRole(role); hear(role); return; }
+      const rs = t.closest('[data-reset]');
+      if (rs) { c[rs.dataset.reset] = ROLES[role].def[rs.dataset.reset]; save(); renderRole(role); hear(role); }
+    });
+    el.addEventListener('change', (e) => {
+      const t = e.target, c = S.sounds[role];
+      if (t.dataset.on) { c.on = t.checked; save(); renderRole(role); return; }
+      if (t.dataset.k) { save(); hear(role); }
+    });
+    el.addEventListener('input', (e) => {
+      const t = e.target, c = S.sounds[role];
+      if (!t.dataset.k) return;
+      c[t.dataset.k] = Number(t.value);
+      const fmt = { vol: fmtVol, pitch: fmtPitch, length: fmtLen }[t.dataset.k];
+      t.parentElement.querySelector('.v').textContent = fmt(c[t.dataset.k]);
+      el.querySelector('.rsum').textContent = summary(role);
+    });
+  }
+}
+
+$('fileIn').addEventListener('change', async () => {
+  const f = $('fileIn').files[0];
+  $('fileIn').value = '';
+  if (!f || !pickRole) return;
+  const role = pickRole;
+  try {
+    const buf = await f.arrayBuffer();
+    const ac = new (window.AudioContext || window.webkitAudioContext)();
+    const ab = await new Promise((res, rej) => { const p = ac.decodeAudioData(buf, res, rej); if (p && p.then) p.then(res, rej); });
+    const mono = new Float32Array(ab.length);
+    for (let ch = 0; ch < ab.numberOfChannels; ch++) {
+      const d = ab.getChannelData(ch);
+      for (let i = 0; i < d.length; i++) mono[i] += d[i] / ab.numberOfChannels;
+    }
+    ac.close && ac.close();
+    const ready = prepareCustom(mono, ab.sampleRate, RATE);
+    if (!ready.length) throw new Error('в файле тишина');
+    CUSTOM[role] = ready;
+    await saveCustom(role, ready, f.name);
+    S.sounds[role].preset = 'custom';
+    S.sounds[role].customName = f.name;
+    save(); renderRole(role); hear(role);
+    log(`свой файл для «${ROLES[role].name}»: ${f.name}, ${(ready.length / RATE).toFixed(1)} с`);
+  } catch (e) {
+    alert('Не получилось открыть этот файл как звук. Подойдут m4a, mp3, wav.');
+    log('файл не открылся: ' + (e && e.message));
+  }
+});
+
+$('openSounds').addEventListener('click', () => {
+  $('runNote').hidden = !run;
+  $('sheet').hidden = false;
+  document.body.classList.add('sheet-open');
+});
+$('sheetDone').addEventListener('click', () => {
+  if (preview) preview.pause();
+  $('sheet').hidden = true;
+  document.body.classList.remove('sheet-open');
+});
+function showMethod() { document.querySelectorAll('#method button').forEach((b) => b.classList.toggle('on', b.dataset.m === S.method)); }
+document.querySelectorAll('#method button').forEach((b) => b.addEventListener('click', () => { S.method = b.dataset.m; showMethod(); save(); }));
+showMethod();
+buildRoles();
+loadCustom().then(() => Object.keys(ROLES).forEach(renderRole));
 
 // ---------- сеанс ----------
 let mode = null;   // 'A' — весь сеанс одним звуком, как музыка; 'B' — звуки по расписанию
-let run = null;    // { o, total, wallStart, paused }
-let audioA = null;
+let run = null;    // { o, total, tail, wallStart, paused }
+let audioA = null, audioUrl = null;
 let ctx = null, t0 = 0, keep = null, sources = [];
 
 function position() {
@@ -312,15 +510,13 @@ function position() {
 function setMedia(o) {
   if (!('mediaSession' in navigator)) return;
   try {
-    navigator.mediaSession.metadata = new MediaMetadata({
-      title: 'RUCHI: Check Time',
-      artist: `${mmss(o.period)} × ${o.reps} · циклов ${o.cycles}`,
-    });
+    navigator.mediaSession.metadata = new MediaMetadata({ title: 'RUCHI: Check Time', artist: `${mmss(o.period)} × ${o.reps} · циклов ${o.cycles}` });
   } catch {}
 }
 
 function stopAll(reason) {
   if (audioA) { audioA._dead = true; audioA.pause(); audioA.removeAttribute('src'); audioA.load(); audioA = null; }
+  if (audioUrl) { URL.revokeObjectURL(audioUrl); audioUrl = null; }
   for (const s of sources) { try { s.stop(); } catch {} }
   sources = [];
   if (keep) { keep.pause(); keep = null; }
@@ -337,9 +533,10 @@ function finish() {
   setTimeout(() => { $('done').textContent = ''; }, 8000);
 }
 
-function startA(o) {
-  const wav = buildSessionWav(o, RATE);
-  const a = new Audio(blobUrl(wav.buffer));
+function startA(o, snd) {
+  const wav = buildSessionWav(o, snd, onMap(), RATE);
+  audioUrl = blobUrl(wav.buffer);
+  const a = new Audio(audioUrl);
   audioA = a;
   a.preload = 'auto';
   for (const ev of ['play', 'pause', 'ended', 'stalled', 'error']) {
@@ -355,7 +552,7 @@ function startA(o) {
   log(`старт А: ${JSON.stringify(o)}; ${(wav.buffer.byteLength / 1e6).toFixed(1)} МБ`);
 }
 
-async function startB(o) {
+async function startB(o, snd) {
   try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
   keep = new Audio(blobUrl(silenceWav(1, RATE)));
   keep.loop = true;
@@ -364,13 +561,13 @@ async function startB(o) {
   ctx.onstatechange = () => ctx && log('звук Б: ' + ctx.state);
   try { await ctx.resume(); } catch {}
   const bufs = {};
-  for (const [k, a] of Object.entries(SND)) {
-    const b = ctx.createBuffer(1, a.length, RATE);
+  for (const [k, a] of Object.entries(snd)) {
+    const b = ctx.createBuffer(1, Math.max(1, a.length), RATE);
     b.getChannelData(0).set(a);
     bufs[k] = b;
   }
   t0 = ctx.currentTime + 0.2;
-  for (const e of plan(o)) {
+  for (const e of plan(o, onMap())) {
     const s = ctx.createBufferSource();
     s.buffer = bufs[e.kind];
     s.connect(ctx.destination);
@@ -384,11 +581,12 @@ $('start').addEventListener('click', async () => {
   stopAll('новый старт');
   $('done').textContent = '';
   const o = opts();
+  const snd = makeSounds(S.sounds, CUSTOM, RATE);
   mode = S.method;
-  run = { o, total: o.delay + o.period * o.reps * o.cycles, wallStart: Date.now(), paused: false };
+  run = { o, total: o.delay + o.period * o.reps * o.cycles, tail: tailSeconds(snd, RATE), wallStart: Date.now(), paused: false };
   document.body.classList.add('running');
   setMedia(o);
-  if (mode === 'A') startA(o); else await startB(o);
+  if (mode === 'A') startA(o, snd); else await startB(o, snd);
   render();
 });
 
@@ -441,7 +639,7 @@ function render() {
 setInterval(() => {
   if (!run) return;
   render();
-  if (mode === 'B' && ctx && !run.paused && position() > run.total + 3) finish();
+  if (mode === 'B' && ctx && !run.paused && position() > run.total + run.tail) finish();
 }, 250);
 
 document.addEventListener('visibilitychange', () => {
