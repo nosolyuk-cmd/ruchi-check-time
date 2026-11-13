@@ -16,13 +16,16 @@ export const PRESETS = {
   tingsha: { name: 'Тингша',      f0: 2050, attack: 0.001,  dur: 4,    gap: 0.9,  noise: 0.08, modes: [[1, 1, 2.6, 4], [1.52, 0.45, 1.8, 6], [2.37, 0.25, 1.0]] },
 };
 
-// Роли звуков. def — как звучит сейчас (по умолчанию). rec — мои советы: [лучший, средний, запасной].
+// Роли звуков. def — по умолчанию: выбор Сергея на iPhone, 2026-11-13.
 export const ROLES = {
-  start: { name: 'Старт',        def: { on: true, preset: 'bell', strikes: 1, vol: 53, pitch: 8, length: 1 }, rec: ['bowl', 'bell', 'bellS'] },
-  pip:   { name: 'Промежуток',   def: { on: true, preset: 'pip',  strikes: 1, vol: 53, pitch: 0, length: 1 }, rec: ['drop', 'wood', 'bellS'] },
-  end:   { name: 'Конец цикла',  def: { on: true, preset: 'bell', strikes: 2, vol: 74, pitch: 0, length: 1 }, rec: ['bowl', 'bell', 'tingsha'] },
-  final: { name: 'Конец сеанса', def: { on: true, preset: 'asEnd', strikes: 2, vol: 85, pitch: 0, length: 1 }, rec: ['bowl', 'tingsha', 'bell'] },
+  start: { name: 'Старт',        def: { on: true, preset: 'bowl',  strikes: 1, vol: 10, pitch: 8,   length: 0.6 } },
+  pip:   { name: 'Промежуток',   def: { on: true, preset: 'drop',  strikes: 1, vol: 29, pitch: -12, length: 2 } },
+  end:   { name: 'Конец цикла',  def: { on: true, preset: 'bowl',  strikes: 1, vol: 40, pitch: 0,   length: 1 } },
+  final: { name: 'Конец сеанса', def: { on: true, preset: 'asEnd', strikes: 1, vol: 40, pitch: 0,   length: 1 } },
 };
+
+// Пределы ползунков (Сергей упёрся в −12 и ×2 — расширено).
+export const LIMITS = { pitch: [-24, 12], length: [0.3, 4] };
 
 export function defaultSounds() {
   const s = {};

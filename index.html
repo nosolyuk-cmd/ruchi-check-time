@@ -192,7 +192,6 @@
 <div id="sheet" hidden>
   <div class="sheetHead"><b>Звуки</b><button id="sheetDone">Готово</button></div>
   <div class="sheetIn">
-    <div class="legend"><span><span class="dot g"></span>советую</span><span><span class="dot y"></span>можно</span><span><span class="dot o"></span>запасной</span></div>
     <div class="note" id="runNote" style="margin-bottom:10px" hidden>Новые звуки — со следующего «Старт».</div>
     <div id="roles"></div>
     <div class="card">
@@ -205,7 +204,7 @@
 </div>
 
 <script type="module">
-import { RATE, PRESETS, ROLES, defaultSounds, roleSound, makeSounds, prepareCustom, plan, soundToWav, buildSessionWav, silenceWav, tailSeconds } from './sound.js';
+import { RATE, PRESETS, ROLES, LIMITS, defaultSounds, roleSound, makeSounds, prepareCustom, plan, soundToWav, buildSessionWav, silenceWav, tailSeconds } from './sound.js';
 
 const $ = (id) => document.getElementById(id);
 const range = (a, b, step = 1) => { const r = []; for (let v = a; v <= b; v += step) r.push(v); return r; };
@@ -388,18 +387,17 @@ const fmtLen = (v) => '×' + Number(v).toFixed(1);
 function renderRole(role) {
   const r = ROLES[role], c = S.sounds[role];
   const el = document.querySelector(`.role[data-role="${role}"]`);
-  const dot = (p) => { const i = r.rec.indexOf(p); return i < 0 ? '' : `<span class="dot ${'gyo'[i]}"></span>`; };
   let chips = '';
   if (role === 'final') chips += `<button class="chip ${c.preset === 'asEnd' ? 'on' : ''}" data-p="asEnd">как конец цикла</button>`;
-  for (const [k, p] of Object.entries(PRESETS)) chips += `<button class="chip ${c.preset === k ? 'on' : ''}" data-p="${k}">${dot(k)}${p.name}</button>`;
+  for (const [k, p] of Object.entries(PRESETS)) chips += `<button class="chip ${c.preset === k ? 'on' : ''}" data-p="${k}">${p.name}</button>`;
   chips += `<button class="chip ${c.preset === 'custom' ? 'on' : ''}" data-p="custom">Свой файл…</button>`;
   let body = `<div class="chips">${chips}</div>`;
   if (c.preset !== 'asEnd') {
     body += `<div class="line"><span class="k">Ударов</span><span class="seg">${[1, 2, 3].map((n) => `<button data-strikes="${n}" class="${c.strikes === n ? 'on' : ''}">${n}</button>`).join('')}</span></div>`;
     body += slider(role, 'vol', 'Громкость', 0, 100, 1, fmtVol);
     if (c.preset !== 'custom') {
-      body += slider(role, 'pitch', 'Высота', -12, 12, 1, fmtPitch);
-      body += slider(role, 'length', 'Длина', 0.5, 2, 0.1, fmtLen);
+      body += slider(role, 'pitch', 'Высота', LIMITS.pitch[0], LIMITS.pitch[1], 1, fmtPitch);
+      body += slider(role, 'length', 'Длина', LIMITS.length[0], LIMITS.length[1], 0.1, fmtLen);
     } else {
       body += `<div class="file">${CUSTOM[role] ? 'Файл: ' + esc(c.customName || 'свой') + ` (${(CUSTOM[role].length / RATE).toFixed(1)} с)` : 'Файл не выбран'} · <a href="#" data-pick="1" style="color:var(--acc)">выбрать файл</a></div>`;
     }
