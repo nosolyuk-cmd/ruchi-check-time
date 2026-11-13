@@ -1,0 +1,453 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#14171a">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='28' fill='%231CCFC1'/%3E%3C/svg%3E">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Check Time">
+<title>RUCHI: Check Time</title>
+<style>
+  :root {
+    --bg:#14171a; --card:#1d2125; --line:#2c3238; --text:#e8ecef; --dim:#8b949c; --acc:#1CCFC1;
+    --band:rgba(28,207,193,.12);
+  }
+  * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html, body { margin:0; background:var(--bg); color:var(--text); }
+  body {
+    font:16px/1.35 -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+    padding:max(14px, env(safe-area-inset-top)) 16px max(24px, env(safe-area-inset-bottom));
+    -webkit-user-select:none; user-select:none;
+  }
+  main { max-width:520px; margin:0 auto; }
+  .brand { font-size:13px; letter-spacing:.1em; color:var(--dim); margin:2px 0 12px; }
+  .brand b { color:var(--acc); font-weight:600; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:18px; padding:14px 12px; margin-bottom:12px; }
+  .label { color:var(--dim); font-size:14px; text-align:center; margin-bottom:4px; }
+  .row { display:flex; gap:10px; justify-content:space-around; align-items:flex-start; }
+  .group { display:flex; flex-direction:column; align-items:center; }
+
+  /* колёса как в iPhone */
+  .wheels { position:relative; display:flex; align-items:center; gap:2px; --h:46px; --vis:5; --fs:36px; --w:76px; }
+  .wheels.small { --h:34px; --vis:3; --fs:22px; --w:62px; }
+  .wheels::before {
+    content:''; position:absolute; left:-6px; right:-6px; top:50%; height:var(--h);
+    transform:translateY(-50%); background:var(--band); border-radius:12px; pointer-events:none;
+  }
+  .wheel {
+    position:relative; width:var(--w); height:calc(var(--h) * var(--vis));
+    overflow-y:scroll; scroll-snap-type:y mandatory; scrollbar-width:none; overscroll-behavior:contain;
+    -webkit-mask-image:linear-gradient(to bottom, transparent, #000 32%, #000 68%, transparent);
+            mask-image:linear-gradient(to bottom, transparent, #000 32%, #000 68%, transparent);
+    touch-action:pan-y;
+  }
+  .wheel::-webkit-scrollbar { display:none; }
+  .wheel .pad { height:calc(var(--h) * (var(--vis) - 1) / 2); }
+  .wheel .it {
+    height:var(--h); line-height:var(--h); text-align:center; scroll-snap-align:center;
+    font-size:var(--fs); font-variant-numeric:tabular-nums; opacity:.3; transition:opacity .12s; cursor:pointer;
+  }
+  .wheel .it.on { opacity:1; }
+  .unit { font-size:13px; color:var(--dim); text-align:center; }
+  .units { display:flex; gap:2px; }
+  .units span { width:var(--w); }
+  .sep { font-size:30px; color:var(--dim); margin:0 -2px; }
+
+  /* итоги */
+  .totals { display:flex; justify-content:space-around; text-align:center; }
+  .big { font-size:40px; font-weight:600; font-variant-numeric:tabular-nums; letter-spacing:-.01em; }
+  .big small { font-size:17px; font-weight:400; color:var(--dim); margin:0 3px 0 1px; }
+  .note { color:var(--dim); font-size:13px; text-align:center; margin-top:6px; }
+
+  /* кнопки */
+  button { font:inherit; border:0; cursor:pointer; color:var(--text); }
+  #start { width:100%; height:72px; border-radius:20px; background:var(--acc); color:#06201e; font-size:26px; font-weight:700; letter-spacing:.02em; }
+  #start:active { transform:scale(.99); }
+  .ctl { display:flex; gap:10px; justify-content:center; margin-top:14px; }
+  #pause { min-width:150px; height:52px; border-radius:16px; background:#2a6f6a; font-size:19px; font-weight:600; }
+  #stop { height:40px; padding:0 18px; border-radius:12px; background:#3a2224; color:#ffb4ae; font-size:15px; align-self:center; }
+
+  /* идёт сеанс */
+  #runView { display:none; text-align:center; padding:8px 0 4px; }
+  body.running #setView { display:none; }
+  body.running #runView { display:block; }
+  .count { font-size:84px; font-weight:600; font-variant-numeric:tabular-nums; line-height:1; margin:6px 0 10px; }
+  .phase { color:var(--dim); font-size:15px; }
+  .where { font-size:20px; margin-top:4px; }
+  .left { color:var(--dim); font-size:15px; margin-top:6px; }
+  #done { text-align:center; color:var(--acc); font-size:17px; min-height:12px; margin:6px 0; }
+
+  /* мелочи внизу */
+  .opts { display:flex; flex-wrap:wrap; gap:8px; align-items:center; justify-content:center; }
+  .chip { background:#262b30; border-radius:10px; padding:8px 12px; font-size:14px; }
+  .toggle { display:flex; align-items:center; gap:8px; color:var(--dim); font-size:14px; }
+  .toggle input { width:20px; height:20px; accent-color:var(--acc); }
+  .seg { display:inline-flex; background:#262b30; border-radius:10px; padding:2px; }
+  .seg button { background:transparent; padding:6px 12px; border-radius:8px; font-size:13px; color:var(--dim); }
+  .seg button.on { background:#3a4148; color:var(--text); }
+  details { color:var(--dim); font-size:13px; }
+  summary { cursor:pointer; text-align:center; padding:4px; }
+  #log { font:12px/1.35 ui-monospace, Menlo, Consolas, monospace; white-space:pre-wrap; max-height:240px; overflow:auto; -webkit-user-select:text; user-select:text; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand"><b>RUCHI</b> · CHECK TIME</div>
+
+  <div id="setView">
+    <div class="card">
+      <div class="row">
+        <div class="group">
+          <div class="label">Промежуток</div>
+          <div class="wheels" id="wPeriod">
+            <div class="wheel" id="wMin"></div>
+            <div class="sep">:</div>
+            <div class="wheel" id="wSec"></div>
+          </div>
+          <div class="units" style="--w:76px"><span class="unit">мин</span><span style="width:8px"></span><span class="unit">сек</span></div>
+        </div>
+        <div class="group">
+          <div class="label">Кол-во раз</div>
+          <div class="wheels"><div class="wheel" id="wReps"></div></div>
+          <div class="unit">&nbsp;</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card totals">
+      <div><div class="label">Цикл</div><div class="big" id="tCycle"></div></div>
+      <div><div class="label">Всего</div><div class="big" id="tTotal"></div></div>
+    </div>
+
+    <div class="card">
+      <div class="row">
+        <div class="group">
+          <div class="label">До старта, сек</div>
+          <div class="wheels small"><div class="wheel" id="wDelay"></div></div>
+        </div>
+        <div class="group">
+          <div class="label">Кол-во циклов</div>
+          <div class="wheels small"><div class="wheel" id="wCycles"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <button id="start">Старт</button>
+    <div id="done"></div>
+  </div>
+
+  <div id="runView" class="card">
+    <div class="phase" id="rPhase"></div>
+    <div class="count" id="rCount">0:00</div>
+    <div class="where" id="rWhere"></div>
+    <div class="left" id="rLeft"></div>
+    <div class="ctl">
+      <button id="pause">Пауза</button>
+      <button id="stop">Стоп</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="opts">
+      <span class="note" style="margin:0">Послушать:</span>
+      <button class="chip" data-hear="start">старт</button>
+      <button class="chip" data-hear="pip">пип</button>
+      <button class="chip" data-hear="end">бам-бам</button>
+    </div>
+    <div class="opts" style="margin-top:10px">
+      <label class="toggle"><input type="checkbox" id="startSound" checked> звук на старте</label>
+      <span class="seg" id="method"><button data-m="A">способ А</button><button data-m="B">способ Б</button></span>
+    </div>
+    <details style="margin-top:8px">
+      <summary>журнал</summary>
+      <div id="log"></div>
+    </details>
+  </div>
+</main>
+
+<script type="module">
+import { RATE, plan, makeSounds, soundToWav, buildSessionWav, silenceWav } from './sound.js';
+
+const $ = (id) => document.getElementById(id);
+const range = (a, b, step = 1) => { const r = []; for (let v = a; v <= b; v += step) r.push(v); return r; };
+const pad2 = (n) => String(n).padStart(2, '0');
+const mmss = (s) => { s = Math.max(0, Math.ceil(s)); return `${Math.floor(s / 60)}:${pad2(s % 60)}`; };
+const human = (s) => {
+  s = Math.round(s);
+  const h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+  const p = [];
+  if (h) p.push(`${h}<small>ч</small>`);
+  if (m) p.push(`${m}<small>мин</small>`);
+  if (r || !p.length) p.push(`${r}<small>с</small>`);
+  return p.join(' ');
+};
+
+// ---------- настройки: запоминаются на этом устройстве ----------
+const KEY = 'checktime.settings.v2';
+const DEF = { period: 30, reps: 10, cycles: 2, delay: 10, startSound: true, method: 'A' };
+let S = { ...DEF };
+try {
+  const v2 = JSON.parse(localStorage.getItem(KEY) || 'null');
+  const v1 = JSON.parse(localStorage.getItem('checktime.settings.v1') || 'null');
+  if (v2) S = { ...S, ...v2 };
+  else if (v1) for (const k of ['period', 'reps', 'cycles', 'delay']) if (v1[k] !== undefined) S[k] = Number(v1[k]) || DEF[k];
+  if (v1 && !v2 && v1.startSound !== undefined) S.startSound = !!v1.startSound;
+} catch {}
+let saveT;
+function save() {
+  clearTimeout(saveT);
+  saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch {} }, 300);
+}
+
+// ---------- колесо ----------
+function wheel(el, values, fmt, value, onChange) {
+  el.innerHTML = '';
+  const top = document.createElement('div'); top.className = 'pad'; el.appendChild(top);
+  const items = values.map((v, i) => {
+    const d = document.createElement('div');
+    d.className = 'it';
+    d.textContent = fmt(v);
+    d.addEventListener('click', () => go(i, true));
+    el.appendChild(d);
+    return d;
+  });
+  const bot = document.createElement('div'); bot.className = 'pad'; el.appendChild(bot);
+  let cur = Math.max(0, values.indexOf(value));
+  if (values.indexOf(value) < 0) { // ближайшее значение
+    let best = 0;
+    values.forEach((v, i) => { if (Math.abs(v - value) < Math.abs(values[best] - value)) best = i; });
+    cur = best;
+  }
+  const h = () => items[0].offsetHeight || 1;
+  const mark = () => items.forEach((d, i) => d.classList.toggle('on', i === cur));
+  function go(i, smooth) { el.scrollTo({ top: i * h(), behavior: smooth ? 'smooth' : 'auto' }); }
+  el.addEventListener('scroll', () => {
+    const i = Math.min(values.length - 1, Math.max(0, Math.round(el.scrollTop / h())));
+    if (i !== cur) { cur = i; mark(); onChange(values[i]); }
+  }, { passive: true });
+  mark();
+  requestAnimationFrame(() => go(cur, false));
+  return { get: () => values[cur], go: (v) => { const i = values.indexOf(v); if (i >= 0) go(i, true); } };
+}
+
+const wMin = wheel($('wMin'), range(0, 59), String, Math.floor(S.period / 60), () => setPeriod());
+const wSec = wheel($('wSec'), range(0, 59), pad2, S.period % 60, () => setPeriod());
+wheel($('wReps'), range(1, 99), String, S.reps, (v) => { S.reps = v; update(); });
+wheel($('wDelay'), range(0, 120, 5), String, S.delay, (v) => { S.delay = v; update(); });
+wheel($('wCycles'), range(1, 30), String, S.cycles, (v) => { S.cycles = v; update(); });
+
+function setPeriod() {
+  let p = wMin.get() * 60 + wSec.get();
+  if (p < 1) { p = 1; wSec.go(1); }
+  S.period = p;
+  update();
+}
+
+const opts = () => ({ period: S.period, reps: S.reps, cycles: S.cycles, delay: S.delay, startSound: S.startSound });
+
+function update() {
+  const cyc = S.period * S.reps;
+  $('tCycle').innerHTML = human(cyc);
+  $('tTotal').innerHTML = human(cyc * S.cycles);
+  save();
+}
+
+$('startSound').checked = S.startSound;
+$('startSound').addEventListener('change', () => { S.startSound = $('startSound').checked; save(); });
+function showMethod() { document.querySelectorAll('#method button').forEach((b) => b.classList.toggle('on', b.dataset.m === S.method)); }
+document.querySelectorAll('#method button').forEach((b) => b.addEventListener('click', () => { S.method = b.dataset.m; showMethod(); save(); }));
+showMethod();
+update();
+
+// ---------- журнал (на ПК уходит только при пробе в домашней сети) ----------
+const LOCAL = /^(localhost|127\.|192\.168\.|10\.)/.test(location.hostname);
+const sid = Date.now().toString(36);
+const LOG = [];
+let queue = [], sending = false;
+const clock = () => new Date().toLocaleTimeString('ru-RU', { hour12: false });
+
+function log(msg) {
+  const rec = { sid, at: new Date().toISOString(), wall: clock(), mode, pos: run ? +position().toFixed(1) : null, msg };
+  LOG.push(rec);
+  $('log').textContent = LOG.map((r) => `${r.wall}  ${r.pos !== null ? '[' + r.pos + ' с] ' : ''}${r.msg}`).join('\n');
+  if (LOCAL) { queue.push(rec); flush(); }
+}
+async function flush() {
+  if (sending || !queue.length) return;
+  sending = true;
+  const batch = queue; queue = [];
+  try {
+    const r = await fetch('/log', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(batch), keepalive: true });
+    if (!r.ok) throw new Error(r.status);
+  } catch { queue = batch.concat(queue); }
+  sending = false;
+  if (queue.length) setTimeout(flush, 3000);
+}
+
+// ---------- послушать ----------
+const SND = makeSounds(RATE);
+const blobUrl = (buf) => URL.createObjectURL(new Blob([buf], { type: 'audio/wav' }));
+const hearUrl = {};
+for (const k of Object.keys(SND)) hearUrl[k] = blobUrl(soundToWav(SND[k], RATE));
+document.querySelectorAll('[data-hear]').forEach((b) => b.addEventListener('click', () => {
+  new Audio(hearUrl[b.dataset.hear]).play().catch((e) => log('не играет: ' + e.message));
+}));
+
+// ---------- сеанс ----------
+let mode = null;   // 'A' — весь сеанс одним звуком, как музыка; 'B' — звуки по расписанию
+let run = null;    // { o, total, wallStart, paused }
+let audioA = null;
+let ctx = null, t0 = 0, keep = null, sources = [];
+
+function position() {
+  if (!run) return 0;
+  if (mode === 'A' && audioA) return audioA.currentTime;
+  if (mode === 'B' && ctx) return Math.max(0, ctx.currentTime - t0);
+  return 0;
+}
+
+function setMedia(o) {
+  if (!('mediaSession' in navigator)) return;
+  try {
+    navigator.mediaSession.metadata = new MediaMetadata({
+      title: 'RUCHI: Check Time',
+      artist: `${mmss(o.period)} × ${o.reps} · циклов ${o.cycles}`,
+    });
+  } catch {}
+}
+
+function stopAll(reason) {
+  if (audioA) { audioA._dead = true; audioA.pause(); audioA.removeAttribute('src'); audioA.load(); audioA = null; }
+  for (const s of sources) { try { s.stop(); } catch {} }
+  sources = [];
+  if (keep) { keep.pause(); keep = null; }
+  if (ctx) { ctx.close().catch(() => {}); ctx = null; }
+  if (run) log('стоп: ' + reason);
+  run = null;
+  document.body.classList.remove('running');
+}
+
+function finish() {
+  log('сеанс окончен');
+  stopAll('конец');
+  $('done').textContent = 'Сеанс окончен';
+  setTimeout(() => { $('done').textContent = ''; }, 8000);
+}
+
+function startA(o) {
+  const wav = buildSessionWav(o, RATE);
+  const a = new Audio(blobUrl(wav.buffer));
+  audioA = a;
+  a.preload = 'auto';
+  for (const ev of ['play', 'pause', 'ended', 'stalled', 'error']) {
+    a.addEventListener(ev, () => {
+      if (a._dead) return;
+      log(`звук А: ${ev}`);
+      if (ev === 'pause' && run && !a.ended) { run.paused = true; render(); }
+      if (ev === 'play' && run) { run.paused = false; render(); }
+      if (ev === 'ended') finish();
+    });
+  }
+  a.play().catch((e) => log('А не стартовал: ' + e.message));
+  log(`старт А: ${JSON.stringify(o)}; ${(wav.buffer.byteLength / 1e6).toFixed(1)} МБ`);
+}
+
+async function startB(o) {
+  try { if (navigator.audioSession) navigator.audioSession.type = 'playback'; } catch {}
+  keep = new Audio(blobUrl(silenceWav(1, RATE)));
+  keep.loop = true;
+  keep.play().catch((e) => log('тихая петля: ' + e.message));
+  ctx = new (window.AudioContext || window.webkitAudioContext)();
+  ctx.onstatechange = () => ctx && log('звук Б: ' + ctx.state);
+  try { await ctx.resume(); } catch {}
+  const bufs = {};
+  for (const [k, a] of Object.entries(SND)) {
+    const b = ctx.createBuffer(1, a.length, RATE);
+    b.getChannelData(0).set(a);
+    bufs[k] = b;
+  }
+  t0 = ctx.currentTime + 0.2;
+  for (const e of plan(o)) {
+    const s = ctx.createBufferSource();
+    s.buffer = bufs[e.kind];
+    s.connect(ctx.destination);
+    s.start(t0 + e.t);
+    sources.push(s);
+  }
+  log(`старт Б: ${JSON.stringify(o)}; ctx ${ctx.state}`);
+}
+
+$('start').addEventListener('click', async () => {
+  stopAll('новый старт');
+  $('done').textContent = '';
+  const o = opts();
+  mode = S.method;
+  run = { o, total: o.delay + o.period * o.reps * o.cycles, wallStart: Date.now(), paused: false };
+  document.body.classList.add('running');
+  setMedia(o);
+  if (mode === 'A') startA(o); else await startB(o);
+  render();
+});
+
+$('pause').addEventListener('click', async () => {
+  if (!run) return;
+  if (!run.paused) {
+    run.paused = true;
+    if (mode === 'A' && audioA) audioA.pause();
+    if (mode === 'B' && ctx) await ctx.suspend();
+    log('пауза');
+  } else {
+    run.paused = false;
+    if (mode === 'A' && audioA) audioA.play();
+    if (mode === 'B' && ctx) await ctx.resume();
+    log('дальше');
+  }
+  render();
+});
+
+$('stop').addEventListener('click', () => stopAll('кнопка Стоп'));
+
+function render() {
+  if (!run) return;
+  const o = run.o, pos = position();
+  $('pause').textContent = run.paused ? 'Дальше' : 'Пауза';
+  if (pos < o.delay) {
+    $('rPhase').textContent = run.paused ? 'Пауза' : 'Подготовка';
+    $('rCount').textContent = mmss(o.delay - pos);
+    $('rWhere').textContent = `${o.reps} раз по ${mmss(o.period)}`;
+    $('rLeft').textContent = `циклов: ${o.cycles}`;
+    return;
+  }
+  const p = pos - o.delay;
+  const all = o.period * o.reps * o.cycles;
+  if (p >= all) {
+    $('rPhase').textContent = '';
+    $('rCount').textContent = '0:00';
+    $('rWhere').textContent = 'Готово';
+    $('rLeft').textContent = '';
+    return;
+  }
+  const idx = Math.floor(p / o.period);
+  const cycle = Math.floor(idx / o.reps) + 1, rep = (idx % o.reps) + 1;
+  $('rPhase').textContent = run.paused ? 'Пауза' : (rep === o.reps ? 'до конца цикла' : 'до звука');
+  $('rCount').textContent = mmss(o.period - (p % o.period));
+  $('rWhere').textContent = `раз ${rep} из ${o.reps} · цикл ${cycle} из ${o.cycles}`;
+  $('rLeft').textContent = `осталось ${mmss(all - p)}`;
+}
+
+setInterval(() => {
+  if (!run) return;
+  render();
+  if (mode === 'B' && ctx && !run.paused && position() > run.total + 3) finish();
+}, 250);
+
+document.addEventListener('visibilitychange', () => {
+  log('страница: ' + (document.hidden ? 'скрыта' : 'видна'));
+  if (!document.hidden) { render(); flush(); }
+});
+</script>
+</body>
+</html>
